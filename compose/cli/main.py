@@ -62,7 +62,6 @@ if not IS_WINDOWS_PLATFORM:
     from dockerpty.pty import PseudoTerminal, RunOperation, ExecOperation
 
 log = logging.getLogger(__name__)
-console_handler = logging.StreamHandler(sys.stderr)
 
 
 def main():
@@ -95,18 +94,25 @@ def main():
 
 
 def dispatch():
-    setup_logging()
+    console_stream = sys.stderr
+    console_handler = logging.StreamHandler(console_stream)
+    setup_logging(console_handler)
     dispatcher = DocoptDispatcher(
         TopLevelCommand,
         {'options_first': True, 'version': get_version_info('compose')})
 
     options, handler, command_options = dispatcher.parse(sys.argv[1:])
+
+    ansi = options.get("--ansi")
+    if options.get("--no-ansi") or os.environ.get('CLICOLOR') == "0":
+        ansi = "never"
+
     setup_console_handler(console_handler,
                           options.get('--verbose'),
-                          set_no_color_if_clicolor(options.get('--no-ansi')),
+                          ansi,
                           options.get("--log-level"))
-    setup_parallel_logger(set_no_color_if_clicolor(options.get('--no-ansi')))
-    if options.get('--no-ansi'):
+    setup_parallel_logger(ansi)
+    if ansi == "never":
         command_options['--no-color'] = True
     return functools.partial(perform_command, options, handler, command_options)
 
@@ -128,7 +134,7 @@ def perform_command(options, handler, command_options):
         handler(command, command_options)
 
 
-def setup_logging():
+def setup_logging(console_handler):
     root_logger = logging.getLogger()
     root_logger.addHandler(console_handler)
     root_logger.setLevel(logging.DEBUG)
@@ -137,14 +143,13 @@ def setup_logging():
     logging.getLogger("requests").propagate = False
 
 
-def setup_parallel_logger(noansi):
-    if noansi:
-        import compose.parallel
-        compose.parallel.ParallelStreamWriter.set_noansi()
+def setup_parallel_logger(ansi):
+    import compose.parallel
+    compose.parallel.ParallelStreamWriter.set_ansi(ansi)
 
 
-def setup_console_handler(handler, verbose, noansi=False, level=None):
-    if handler.stream.isatty() and noansi is False:
+def setup_console_handler(handler, verbose, ansi="auto", level=None):
+    if ansi == "always" or (ansi == "auto" and handler.stream.isatty()):
         format_class = ConsoleWarningFormatter
     else:
         format_class = logging.Formatter
@@ -195,6 +200,7 @@ class TopLevelCommand(object):
       --verbose                   Show more output
       --log-level LEVEL           Set log level (DEBUG, INFO, WARNING, ERROR, CRITICAL)
       --no-ansi                   Do not print ANSI control characters
+      --ansi (never|always|auto)  Control when to print ANSI control characters
       -v, --version               Print version and exit
       -H, --host HOST             Daemon socket to connect to
 
@@ -667,7 +673,7 @@ class TopLevelCommand(object):
         log_printer_from_project(
             self.project,
             containers,
-            set_no_color_if_clicolor(options['--no-color']),
+            options['--no-color'],
             log_args,
             event_stream=self.project.events(service_names=options['SERVICE'])).run()
 
@@ -1125,7 +1131,7 @@ class TopLevelCommand(object):
             log_printer = log_printer_from_project(
                 self.project,
                 attached_containers,
-                set_no_color_if_clicolor(options['--no-color']),
+                options['--no-color'],
                 {'follow': True},
                 cascade_stop,
                 event_stream=self.project.events(service_names=service_names))
@@ -1603,7 +1609,3 @@ def warn_for_swarm_mode(client):
             "To deploy your application across the swarm, "
             "use `docker stack deploy`.\n"
         )
-
-
-def set_no_color_if_clicolor(no_color_flag):
-    return no_color_flag or os.environ.get('CLICOLOR') == "0"

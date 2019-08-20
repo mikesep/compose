@@ -160,7 +160,7 @@ def test_parallel_execute_alignment(capsys):
 
 def test_parallel_execute_ansi(capsys):
     ParallelStreamWriter.instance = None
-    ParallelStreamWriter.set_noansi(value=False)
+    ParallelStreamWriter.set_ansi("always")
     results, errors = parallel_execute(
         objects=["something", "something more"],
         func=lambda x: x,
@@ -176,7 +176,7 @@ def test_parallel_execute_ansi(capsys):
 
 def test_parallel_execute_noansi(capsys):
     ParallelStreamWriter.instance = None
-    ParallelStreamWriter.set_noansi()
+    ParallelStreamWriter.set_ansi("never")
     results, errors = parallel_execute(
         objects=["something", "something more"],
         func=lambda x: x,

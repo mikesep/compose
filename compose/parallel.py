@@ -263,13 +263,13 @@ class ParallelStreamWriter(object):
     to jump to the correct line, and write over the line.
     """
 
-    noansi = False
+    ansi = "auto"
     lock = Lock()
     instance = None
 
     @classmethod
-    def set_noansi(cls, value=True):
-        cls.noansi = value
+    def set_ansi(cls, value):
+        cls.ansi = value
 
     def __init__(self, stream):
         self.stream = stream
@@ -314,10 +314,10 @@ class ParallelStreamWriter(object):
     def write(self, msg, obj_index, status, color_func):
         if msg is None:
             return
-        if self.noansi:
-            self._write_noansi(msg, obj_index, status)
-        else:
+        if self.ansi == "always" or (self.ansi == "auto" and self.stream.isatty()):
             self._write_ansi(msg, obj_index, color_func(status))
+        else:
+            self._write_noansi(msg, obj_index, status)
 
 
 def get_stream_writer():
