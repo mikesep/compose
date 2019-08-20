@@ -314,7 +314,7 @@ class ParallelStreamWriter(object):
     def write(self, msg, obj_index, status, color_func):
         if msg is None:
             return
-        if self.noansi:
+        if self.noansi or not self.stream.isatty():
             self._write_noansi(msg, obj_index, status)
         else:
             self._write_ansi(msg, obj_index, color_func(status))
