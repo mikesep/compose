@@ -14,6 +14,7 @@ from six.moves import _thread as thread
 from six.moves.queue import Empty
 from six.moves.queue import Queue
 
+from compose.cli.colors import AnsiMode
 from compose.cli.colors import green
 from compose.cli.colors import red
 from compose.cli.signals import ShutdownException
@@ -263,7 +264,7 @@ class ParallelStreamWriter(object):
     to jump to the correct line, and write over the line.
     """
 
-    ansi = "auto"
+    ansi = AnsiMode.auto
     lock = Lock()
     instance = None
 
@@ -314,7 +315,7 @@ class ParallelStreamWriter(object):
     def write(self, msg, obj_index, status, color_func):
         if msg is None:
             return
-        if self.ansi == "always" or (self.ansi == "auto" and self.stream.isatty()):
+        if self.ansi == AnsiMode.always or (self.ansi == AnsiMode.auto and self.stream.isatty()):
             self._write_ansi(msg, obj_index, color_func(status))
         else:
             self._write_noansi(msg, obj_index, status)

@@ -1,7 +1,18 @@
 from __future__ import absolute_import
 from __future__ import unicode_literals
 
+import enum
+
 from ..const import IS_WINDOWS_PLATFORM
+
+
+@enum.unique
+class AnsiMode(enum.Enum):
+    """Enumeration for when to output ANSI colors."""
+    never = "never"
+    always = "always"
+    auto = "auto"
+
 
 NAMES = [
     'grey',

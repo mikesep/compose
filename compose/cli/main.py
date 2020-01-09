@@ -43,6 +43,7 @@ from ..service import ConvergenceStrategy
 from ..service import ImageType
 from ..service import NeedsBuildError
 from ..service import OperationFailedError
+from .colors import AnsiMode
 from .command import get_config_from_options
 from .command import project_from_options
 from .docopt_command import DocoptDispatcher
@@ -103,16 +104,23 @@ def dispatch():
 
     options, handler, command_options = dispatcher.parse(sys.argv[1:])
 
-    ansi = options.get("--ansi")
+    try:
+        ansi = AnsiMode(options.get("--ansi") or "auto")
+    except ValueError:
+        raise UserError(
+            'Invalid value for --ansi. Expected one of {}.'.format(
+                ', '.join(m.value for m in AnsiMode)
+            )
+        )
     if options.get("--no-ansi") or os.environ.get('CLICOLOR') == "0":
-        ansi = "never"
+        ansi = AnsiMode.never
 
     setup_console_handler(console_handler,
                           options.get('--verbose'),
                           ansi,
                           options.get("--log-level"))
     setup_parallel_logger(ansi)
-    if ansi == "never":
+    if ansi == AnsiMode.never:
         command_options['--no-color'] = True
     return functools.partial(perform_command, options, handler, command_options)
 
@@ -148,8 +156,8 @@ def setup_parallel_logger(ansi):
     compose.parallel.ParallelStreamWriter.set_ansi(ansi)
 
 
-def setup_console_handler(handler, verbose, ansi="auto", level=None):
-    if ansi == "always" or (ansi == "auto" and handler.stream.isatty()):
+def setup_console_handler(handler, verbose, ansi=AnsiMode.auto, level=None):
+    if ansi == AnsiMode.always or (ansi == AnsiMode.auto and handler.stream.isatty()):
         format_class = ConsoleWarningFormatter
     else:
         format_class = logging.Formatter
